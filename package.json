@@ -1,0 +1,14 @@
+{
+  "name": "mukhaweli-school-portal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Role-based school portal for MUKHAWELI SCHOOL",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js"
+  }
+}
