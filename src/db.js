@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.js';
 import { hashPassword } from './password.js';
 import { seed } from './seed.js';
+import { loadSettings } from './settings.js';
 
 let db = null;
 
@@ -247,6 +248,12 @@ CREATE INDEX IF NOT EXISTS idx_login_attempts ON login_attempts(identifier, atte
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_announcements_live ON announcements(published, pinned, created_at);
 CREATE INDEX IF NOT EXISTS idx_enquiries_status ON enquiries(status, created_at);
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
 
 function ensureColumn(database, table, column, definition) {
@@ -365,6 +372,7 @@ export function initDb() {
   ensureColumn(db, 'users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'users', 'created_by', 'INTEGER REFERENCES users(id)');
   ensureColumn(db, 'users', 'last_login_at', 'TEXT');
+  loadSettings(db);
 
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM users').get();
   if (Number(n) === 0) seed(db);

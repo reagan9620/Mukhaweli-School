@@ -1,6 +1,7 @@
 import { audit } from '../accounts.js';
 import { HANDLED, esc, fmtDate, fmtDateTime, html, redirect } from '../http.js';
 import { broadcast, subscribe } from '../events.js';
+import { SETTINGS_FIELDS, currentSettings, saveSettings } from '../settings.js';
 import {
   ANNOUNCEMENT_CATEGORIES,
   createAnnouncement,
@@ -276,6 +277,85 @@ function enquiryStatusHandler(ctx) {
   return redirect('/admin/enquiries?ok=Enquiry+updated.');
 }
 
+function settingsPage(ctx, { values = currentSettings(), errors = {} } = {}) {
+  const field = (setting) => {
+    const error = errors[setting.key];
+    const hint = error
+      ? `<span class="hint" style="color:var(--red)">${esc(error)}</span>`
+      : setting.help
+        ? `<span class="hint">${esc(setting.help)}</span>`
+        : '';
+    const numeric = setting.type === 'number';
+    return `<div class="field">
+      <label for="set-${setting.key}">${esc(setting.label)}</label>
+      <input id="set-${setting.key}" name="${setting.key}" type="${numeric ? 'number' : 'text'}"
+        value="${esc(values[setting.key] ?? '')}"
+        ${numeric ? `min="${setting.min}" max="${setting.max}" step="1"` : `maxlength="${setting.max}"`}
+        required>
+      ${hint}
+    </div>`;
+  };
+  return html(
+    layout(
+      ctx,
+      'Website settings',
+      `<div class="split">
+        ${panel({
+          title: 'School details',
+          subtitle: 'These appear on the public website and across the portal.',
+          body: `<form method="post" action="/admin/settings">
+            <div class="form-grid">${SETTINGS_FIELDS.map(field).join('')}</div>
+            <div class="form-actions">
+              <button class="btn" type="submit">${icon('check')} Save details</button>
+              <a class="btn ghost" href="/" target="_blank" rel="noopener">${icon('link')} View public website</a>
+            </div>
+          </form>`,
+        })}
+        ${panel({
+          title: 'How this works',
+          body: `<div class="list">
+            <div class="list-item">${icon('check')}<div class="list-copy"><strong>Live immediately</strong><small>Saving updates the website and portal on the next page load. No redeploy needed.</small></div></div>
+            <div class="list-item">${icon('mail')}<div class="list-copy"><strong>Account emails are separate</strong><small>Changing the public email does not change the sign-in addresses issued to staff or students.</small></div></div>
+            <div class="list-item">${icon('clock')}<div class="list-copy"><strong>Term dates</strong><small>Opening, closing and examination dates are shown from the school calendar.</small></div></div>
+          </div>`,
+        })}
+      </div>`,
+      { active: '/admin/settings' }
+    )
+  );
+}
+
+function updateSettingsHandler(ctx) {
+  const values = {};
+  const errors = {};
+  for (const setting of SETTINGS_FIELDS) {
+    const raw = String(ctx.fields[setting.key] ?? '').trim();
+    values[setting.key] = raw.slice(0, setting.max);
+    if (!raw) {
+      errors[setting.key] = 'This field is required.';
+      continue;
+    }
+    if (setting.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+      errors[setting.key] = 'Enter a valid email address.';
+    }
+    if (setting.type === 'number') {
+      const number = Number(raw);
+      if (!Number.isInteger(number) || number < setting.min || number > setting.max) {
+        errors[setting.key] = `Enter a year between ${setting.min} and ${setting.max}.`;
+      }
+    }
+  }
+  if (Object.keys(errors).length) {
+    const page = settingsPage(ctx, { values, errors });
+    return html(page.body, 400);
+  }
+  saveSettings(ctx.db, values);
+  audit(ctx.db, ctx.user.id, 'settings.update', { detail: `Updated school details for ${values.school}` });
+  return redirect(
+    `/admin/settings?ok=${encodeURIComponent('School details saved. They are live on the website and portal.')}`
+  );
+}
+
 export function registerAdminSite(r) {
   r.get('/admin/announcements', ['admin'], announcementsPage);
   r.get('/admin/announcements/new', ['admin'], (ctx) =>
@@ -289,6 +369,9 @@ export function registerAdminSite(r) {
 
   r.get('/admin/enquiries', ['admin'], enquiriesPage);
   r.post('/admin/enquiries/:id/status', ['admin'], enquiryStatusHandler);
+
+  r.get('/admin/settings', ['admin'], (ctx) => settingsPage(ctx));
+  r.post('/admin/settings', ['admin'], updateSettingsHandler);
 
   r.get('/admin/live', ['admin'], (ctx) => {
     subscribe(ctx.res, ['enquiry']);

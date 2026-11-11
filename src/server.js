@@ -208,7 +208,8 @@ const server = http.createServer(async (req, res) => {
     try {
       writeResult(res, serverError());
     } catch {
-      res.writeHead(500).end('Server error');
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
     }
   }
 });
