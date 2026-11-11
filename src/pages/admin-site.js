@@ -338,12 +338,16 @@ function updateSettingsHandler(ctx) {
     if (setting.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
       errors[setting.key] = 'Enter a valid email address.';
     }
+    if (setting.domain && !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(raw)) {
+      errors[setting.key] = 'Enter a domain like mukhaweli.ac.ke — no @ symbol or spaces.';
+    }
     if (setting.type === 'number') {
       const number = Number(raw);
       if (!Number.isInteger(number) || number < setting.min || number > setting.max) {
         errors[setting.key] = `Enter a year between ${setting.min} and ${setting.max}.`;
       }
     }
+    if (setting.domain) values[setting.key] = values[setting.key].toLowerCase();
   }
   if (Object.keys(errors).length) {
     const page = settingsPage(ctx, { values, errors });

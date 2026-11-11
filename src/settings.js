@@ -16,6 +16,22 @@ export const SETTINGS_FIELDS = [
   { key: 'term', label: 'Current term', type: 'text', max: 40 },
   { key: 'year', label: 'Academic year', type: 'number', min: 2000, max: 2100 },
   { key: 'examName', label: 'Examination name', type: 'text', max: 80 },
+  {
+    key: 'domain',
+    label: 'Staff & parent email domain',
+    type: 'text',
+    max: 80,
+    domain: true,
+    help: 'Used for new staff and parent accounts. Existing emails are not renamed.',
+  },
+  {
+    key: 'studentDomain',
+    label: 'Student email domain',
+    type: 'text',
+    max: 80,
+    domain: true,
+    help: 'Used for new student accounts. Existing emails are not renamed.',
+  },
 ];
 
 export function currentSettings() {
